@@ -15,11 +15,38 @@
     </button>
   </div>
 </div>
-<div class="admin-panel">
+<div class="participants-list">
   <h2>Participants</h2>
-  <ul id="participantsList"></ul>
-  
+  <ul id="participantsList"></ul> 
 </div>
+{% if isAdmin %}
+<div class="admin-panel">
+  <h2>Admin Panel</h2>
+  <p>Add User to Chat:</p>
+  <input
+      type="text"
+      rows="3"
+      placeholder="Enter User Name"
+      name="addMember"
+      id="addMember"
+    />
+    <button type="button" name="send" id="addMember-btn" onClick="addMember()">
+      Add Chat Member
+    </button>
+    <p>Remove User from Chat:</p>
+    <input
+        type="text"
+        rows="3"
+        placeholder="Enter User Name"
+        name="removeMember"
+        id="removeMember"
+      />
+      <button type="button" name="send" id="removeMember-btn" onClick="removeMember()">
+        Remove Chat Member
+      </button>
+</div>
+{% endif %}
+
 <script type="text/javascript">
   var socketio = io();
 
@@ -40,7 +67,7 @@
     messages.innerHTML += content;
   };
 
-  const addMember = (name) => {
+  const initMemberList = (name) => {
     const content = `
     <li>
         ${name}
@@ -48,6 +75,28 @@
     `;
     members.innerHTML += content;
   };
+
+  const addMember = () => {
+    const addMemberField = document.getElementById("addMember");
+    if(addMemberField.value == "") return;
+    socketio.emit("addMember", {user: addMemberField.value});
+    addMemberField.value = "";
+  };
+
+  const removeMember = () => {
+    const removeMemberField = document.getElementById("removeMember");
+    if(removeMemberField.value == "") return;
+    socketio.emit("removeMember", {user: removeMemberField.value});
+    removeMemberField.value = "";
+  };
+
+  socketio.on("addMember", (user) => {
+    console.log("todo");
+  });
+
+  socketio.on("removeMember", (user) => {
+    console.log("todo");
+  });
 
   socketio.on("message", (data) => {
     createMessage(data.name, data.message);
@@ -68,7 +117,7 @@
 {% endfor %}
 {% for member in members %}
 <script type="text/javascript">
-  addMember("{{member}}");
+  initMemberList("{{member}}");
 </script>
 {% endfor %}
 

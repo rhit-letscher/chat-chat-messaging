@@ -109,7 +109,7 @@ def room():
     if room is None or session.get("name") is None or room not in rooms:
         return redirect(url_for("home"))
 
-    return render_template("room.html", code=room, messages=rooms[room]["messages"], members=getChatMembers(room))
+    return render_template("room.html", code=room, messages=rooms[room]["messages"], members=getChatMembers(room),isAdmin = isRoomAdmin(session.get("name"),room))
 
 @socketio.on("message")
 def message(data):
@@ -124,6 +124,21 @@ def message(data):
     send(content, to=room)
     rooms[room]["messages"].append(content)
     print(f"{session.get('name')} said: {data['data']}")
+
+@socketio.on("addMember")
+def addMember(user):
+    room = session.get("room")
+    admin = session.get("name")
+    if room not in rooms:
+        return 
+    if not isRoomAdmin(admin,room):
+        print("error: invalid perms")
+        return
+    if user not in uidToConversation.keys():
+        print("error invalid username")
+        return
+        #todo: return error invalid username to client 
+    uidToConversation[user].append({"name": room, "adminPerms": False})
 
 @socketio.on("connect")
 def connect(auth):
