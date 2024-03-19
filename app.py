@@ -7,7 +7,9 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = "hjhjsdahhds"
 socketio = SocketIO(app)
 
-rooms = {}
+uidToConversation = {"user1": ["chat1","chat2"]}
+rooms = {"chat1": {"members": 0, "messages": []},"chat2": {"members": 0, "messages": []}}
+uid = "user1"
 
 def generate_unique_code(length):
     while True:
@@ -22,35 +24,67 @@ def generate_unique_code(length):
 
 @app.route("/", methods=["POST", "GET"])
 def home():
-    session.clear()
+    name = session.get("name")
+    #default name
+    if not name:
+        name = uid
+        session["name"] = uid
+
+    #for debugging purposes, initializes chatlist if empty
+    if(name not in uidToConversation.keys()):
+        uidToConversation[name] = []
+    else:
+        userchats = uidToConversation[name]
+
+
+
     if request.method == "POST":
         name = request.form.get("name")
         code = request.form.get("code")
         join = request.form.get("join", False)
         create = request.form.get("create", False)
-
-        if not name:
-            return render_template("home.html", error="Please enter a name.", code=code, name=name)
-
-        if join != False and not code:
-            return render_template("home.html", error="Please enter a room code.", code=code, name=name)
+        changename = request.form.get("setname", False)
         
-        room = code
+        #if not session["name"]:
+        #   return render_template("home.html", error="Please enter a name.", code=code, name=name, userchats=userchats)
+
+        #join room
+        if join != False:
+            print("clicked join")
+            if not code:
+                return render_template("home.html", error="Please enter a room code.", code=code, name=session.get("name"), userchats=uidToConversation[session.get("name")])
+            elif code not in rooms:
+                return render_template("home.html", error="Room does not exist.", code=code, name=session.get("name"), userchats=uidToConversation[session.get("name")])
+            else:
+                uidToConversation[session.get("name")].append(code)
+                return redirect(url_for("room",id=code))
+
+        #change name
+        if changename != False:
+            print("clicked namechange")
+            session["name"] = name
+            if(name not in uidToConversation.keys()):
+                uidToConversation[name] = []
+        
+        #room = code
         if create != False:
+            print("clicked create")
             room = generate_unique_code(4)
             rooms[room] = {"members": 0, "messages": []}
-        elif code not in rooms:
-            return render_template("home.html", error="Room does not exist.", code=code, name=name)
+            uidToConversation[session.get("name")].append(room)
+            return redirect(url_for("room",id=code))
         
-        session["room"] = room
-        session["name"] = name
-        return redirect(url_for("room"))
+        #session["room"] = room
+        #session["name"] = name
+        
 
-    return render_template("home.html")
+    return render_template("home.html", userchats=uidToConversation[session.get("name")])
 
 @app.route("/room")
 def room():
-    room = session.get("room")
+    #room = session.get("room")
+    room = request.args.get('id')
+    session['room'] = room
     if room is None or session.get("name") is None or room not in rooms:
         return redirect(url_for("home"))
 
@@ -93,8 +127,8 @@ def disconnect():
 
     if room in rooms:
         rooms[room]["members"] -= 1
-        if rooms[room]["members"] <= 0:
-            del rooms[room]
+        #if rooms[room]["members"] <= 0:
+        #    del rooms[room]
     
     send({"name": name, "message": "has left the room"}, to=room)
     print(f"{name} has left the room {room}")
