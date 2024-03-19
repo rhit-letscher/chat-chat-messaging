@@ -34,6 +34,7 @@
   </script>
   {% for chat in userchats %}
   <script type="text/javascript">
+    console.log("chat {{chat}}");
     createChatItem("{{chat}}");
   </script>
   {% endfor %}

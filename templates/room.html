@@ -15,10 +15,16 @@
     </button>
   </div>
 </div>
+<div class="admin-panel">
+  <h2>Participants</h2>
+  <ul id="participantsList"></ul>
+  
+</div>
 <script type="text/javascript">
   var socketio = io();
 
   const messages = document.getElementById("messages");
+  const members = document.getElementById("participantsList");
 
   const createMessage = (name, msg) => {
     const content = `
@@ -34,6 +40,15 @@
     messages.innerHTML += content;
   };
 
+  const addMember = (name) => {
+    const content = `
+    <li>
+        ${name}
+    </li>
+    `;
+    members.innerHTML += content;
+  };
+
   socketio.on("message", (data) => {
     createMessage(data.name, data.message);
   });
@@ -44,9 +59,17 @@
     socketio.emit("message", { data: message.value });
     message.value = "";
   };
+
 </script>
 {% for msg in messages %}
 <script type="text/javascript">
   createMessage("{{msg.name}}", "{{msg.message}}");
 </script>
-{% endfor %} {% endblock %}
+{% endfor %}
+{% for member in members %}
+<script type="text/javascript">
+  addMember("{{member}}");
+</script>
+{% endfor %}
+
+{% endblock %}

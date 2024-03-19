@@ -7,7 +7,7 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = "hjhjsdahhds"
 socketio = SocketIO(app)
 
-uidToConversation = {"user1": ["chat1","chat2"]}
+uidToConversation = {"user1": [{"name": "chat1","adminPerms":True},{"name": "chat3","adminPerms":False}]}
 rooms = {"chat1": {"members": 0, "messages": []},"chat2": {"members": 0, "messages": []}}
 uid = "user1"
 
@@ -21,6 +21,27 @@ def generate_unique_code(length):
             break
     
     return code
+
+def getChatMembers(chatName):
+    members = []
+    for user in uidToConversation.keys():
+        for chat in uidToConversation[user]:
+            if(chat["name"] == chatName):
+                members.append(user)
+    return members
+
+def getUserChats(chatInfo):
+    print(chatInfo)
+    namelist = []
+    for conversation in chatInfo:
+        namelist.append(conversation["name"])
+    print(namelist)
+    return namelist
+
+def isRoomAdmin(user,roomName):
+    for room in uidToConversation[user]:
+        if(room["name"] == roomName):
+            return room["adminPerms"]
 
 @app.route("/", methods=["POST", "GET"])
 def home():
@@ -52,11 +73,11 @@ def home():
         if join != False:
             print("clicked join")
             if not code:
-                return render_template("home.html", error="Please enter a room code.", code=code, name=session.get("name"), userchats=uidToConversation[session.get("name")])
+                return render_template("home.html", error="Please enter a room code.", code=code, name=session.get("name"), userchats=getUserChats(uidToConversation[session.get("name")]))
             elif code not in rooms:
-                return render_template("home.html", error="Room does not exist.", code=code, name=session.get("name"), userchats=uidToConversation[session.get("name")])
+                return render_template("home.html", error="Room does not exist.", code=code, name=session.get("name"), userchats=getUserChats(uidToConversation[session.get("name")]))
             else:
-                uidToConversation[session.get("name")].append(code)
+                uidToConversation[session.get("name")].append({"name": code,"adminPerms":False})
                 return redirect(url_for("room",id=code))
 
         #change name
@@ -71,14 +92,14 @@ def home():
             print("clicked create")
             room = generate_unique_code(4)
             rooms[room] = {"members": 0, "messages": []}
-            uidToConversation[session.get("name")].append(room)
-            return redirect(url_for("room",id=code))
+            uidToConversation[session.get("name")].append({"name": room,"adminPerms":True})
+            return redirect(url_for("room",id=room))
         
         #session["room"] = room
         #session["name"] = name
         
 
-    return render_template("home.html", userchats=uidToConversation[session.get("name")])
+    return render_template("home.html", userchats=getUserChats(uidToConversation[session.get("name")]))
 
 @app.route("/room")
 def room():
@@ -88,7 +109,7 @@ def room():
     if room is None or session.get("name") is None or room not in rooms:
         return redirect(url_for("home"))
 
-    return render_template("room.html", code=room, messages=rooms[room]["messages"])
+    return render_template("room.html", code=room, messages=rooms[room]["messages"], members=getChatMembers(room))
 
 @socketio.on("message")
 def message(data):
