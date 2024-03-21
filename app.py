@@ -8,7 +8,7 @@ app.config["SECRET_KEY"] = "hjhjsdahhds"
 socketio = SocketIO(app)
 
 uidToConversation = {"user1": [{"name": "chat1","adminPerms":True},{"name": "chat3","adminPerms":False}]}
-rooms = {"chat1": {"members": 0, "messages": []},"chat2": {"members": 0, "messages": []}}
+rooms = {"chat1": {"members": 0, "messages": [],"type": "public"},"chat2": {"members": 0, "messages": [], "type": "public"}}
 uid = "user1"
 
 def generate_unique_code(length):
@@ -91,7 +91,7 @@ def home():
         if create != False:
             print("clicked create")
             room = generate_unique_code(4)
-            rooms[room] = {"members": 0, "messages": []}
+            rooms[room] = {"members": 0, "messages": [],"type": "public"}
             uidToConversation[session.get("name")].append({"name": room,"adminPerms":True})
             return redirect(url_for("room",id=room))
         
@@ -125,8 +125,46 @@ def message(data):
     rooms[room]["messages"].append(content)
     print(f"{session.get('name')} said: {data['data']}")
 
+@socketio.on("setType")
+def setType(type):
+    if type not in ["public","private"]:
+        return
+    room = session.get("room")
+    admin = session.get("name")
+    if room not in rooms:
+        return 
+    if not isRoomAdmin(admin,room):
+        print("error: invalid perms")
+        return
+    rooms[room]["type"] = type
+
 @socketio.on("addMember")
 def addMember(user):
+    user = user['user']
+    print("adding member "+user)
+    room = session.get("room")
+    admin = session.get("name")
+    if room not in rooms:
+        return 
+    if not isRoomAdmin(admin,room):
+        print("error: invalid perms")
+        return
+    print(uidToConversation.keys())
+    if user not in uidToConversation.keys():
+        print("error invalid username")
+        return
+        #todo: return error invalid username to client 
+    uidToConversation[user].append({"name": room, "adminPerms": False})
+    content = {
+        "name": "System",
+        "message": f"{admin} has added {user} from the room"
+    }
+    send(content, to=room)
+    rooms[room]["messages"].append(content)
+
+@socketio.on("removeMember")
+def removeMember(user):
+    user = user['user']
     room = session.get("room")
     admin = session.get("name")
     if room not in rooms:
@@ -138,7 +176,16 @@ def addMember(user):
         print("error invalid username")
         return
         #todo: return error invalid username to client 
-    uidToConversation[user].append({"name": room, "adminPerms": False})
+    for i in range(len(uidToConversation)):
+        if uidToConversation[user][i]['name'] == room:
+            del uidToConversation[user][i]
+            content = {
+            "name": "System",
+            "message": f"{admin} has removed {user} from the room"
+            }
+            send(content, to=room)
+            rooms[room]["messages"].append(content)
+            break
 
 @socketio.on("connect")
 def connect(auth):
@@ -149,6 +196,8 @@ def connect(auth):
     if room not in rooms:
         leave_room(room)
         return
+    if rooms[room]["type"] != "public":
+        return render_template("home.html", error="This room is private.", code=room, name=session.get("name"), userchats=getUserChats(uidToConversation[session.get("name")]))
     
     join_room(room)
     send({"name": name, "message": "has entered the room"}, to=room)

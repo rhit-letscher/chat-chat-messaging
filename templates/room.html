@@ -30,7 +30,7 @@
       name="addMember"
       id="addMember"
     />
-    <button type="button" name="send" id="addMember-btn" onClick="addMember()">
+    <button type="button" name="addMember" id="addMember-btn" onClick="addMember()">
       Add Chat Member
     </button>
     <p>Remove User from Chat:</p>
@@ -41,9 +41,18 @@
         name="removeMember"
         id="removeMember"
       />
-      <button type="button" name="send" id="removeMember-btn" onClick="removeMember()">
+      <button type="button" name="removeMember" id="removeMember-btn" onClick="removeMember()">
         Remove Chat Member
       </button>
+
+      <p>Conversation Type: {{type}}</p>
+      <button type="button" name="changePublic" id="changePublic-btn" onClick="setType('public')">
+        Make Public
+      </button>
+      <button type="button" name="changePrivate" id="changePrivate-btn" onClick="setType('private')">
+        Make Private
+      </button>
+
 </div>
 {% endif %}
 
@@ -90,8 +99,12 @@
     removeMemberField.value = "";
   };
 
+  const setType = (type) => {
+    socketio.emit("setType", type);
+  };
+
   socketio.on("addMember", (user) => {
-    console.log("todo");
+    initMemberList(user);
   });
 
   socketio.on("removeMember", (user) => {
