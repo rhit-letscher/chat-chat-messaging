@@ -1,6 +1,7 @@
 {% extends 'base.html' %} {% block content %}
 <div class="message-box">
   <h2>Chat Room: {{code}}</h2>
+  <div class="error" id="error"></div>
   <div class="messages" id="messages"></div>
   <div class="inputs">
     <input
@@ -45,7 +46,7 @@
         Remove Chat Member
       </button>
 
-      <p>Conversation Type: {{type}}</p>
+      <p id="conv-type">Conversation Type: {{type}}</p>
       <button type="button" name="changePublic" id="changePublic-btn" onClick="setType('public')">
         Make Public
       </button>
@@ -58,6 +59,8 @@
 
 <script type="text/javascript">
   var socketio = io();
+  uid = "{{uid}}"
+  console.log(uid)
 
   const messages = document.getElementById("messages");
   const members = document.getElementById("participantsList");
@@ -78,11 +81,16 @@
 
   const initMemberList = (name) => {
     const content = `
-    <li>
+    <li id="mem-${name}">
         ${name}
     </li>
     `;
     members.innerHTML += content;
+  };
+
+  const removeListMember = (name) => {
+    const toRem = document.getElementById("mem-"+name);
+    toRem.remove();
   };
 
   const addMember = () => {
@@ -103,16 +111,28 @@
     socketio.emit("setType", type);
   };
 
-  socketio.on("addMember", (user) => {
-    initMemberList(user);
-  });
-
-  socketio.on("removeMember", (user) => {
-    console.log("todo");
-  });
 
   socketio.on("message", (data) => {
+    if(data.message !=null){
     createMessage(data.name, data.message);
+    }
+    if(data.addUser != null){
+      console.log("added user success")
+      initMemberList(data.user);
+    }
+    if(data.removeUser != null){
+      console.log("rem user success")
+      removeListMember(data.user);
+      //if i was removed, redirect to home
+      if(data.user == uid){
+        console.log("IM GONEE")
+        window.location.replace("/");
+      }
+    }
+    if(data.changeType != null){
+      const type = document.getElementById("conv-type");
+      type.innerText = `Conversation Type: ${data.type}`
+    }
   });
 
   const sendMessage = () => {

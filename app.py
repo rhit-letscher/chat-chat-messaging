@@ -8,7 +8,7 @@ app.config["SECRET_KEY"] = "hjhjsdahhds"
 socketio = SocketIO(app)
 
 uidToConversation = {"user1": [{"name": "chat1","adminPerms":True},{"name": "chat3","adminPerms":False}]}
-rooms = {"chat1": {"members": 0, "messages": [],"type": "public"},"chat2": {"members": 0, "messages": [], "type": "public"}}
+rooms = {"chat1": {"members": 1, "messages": [],"type": "public"},"chat2": {"members": 1, "messages": [], "type": "public"}}
 uid = "user1"
 
 def generate_unique_code(length):
@@ -76,6 +76,8 @@ def home():
                 return render_template("home.html", error="Please enter a room code.", code=code, name=session.get("name"), userchats=getUserChats(uidToConversation[session.get("name")]))
             elif code not in rooms:
                 return render_template("home.html", error="Room does not exist.", code=code, name=session.get("name"), userchats=getUserChats(uidToConversation[session.get("name")]))
+            elif (rooms[code]["type"] == "private" and session.get("name") not in getChatMembers(code)):
+                return render_template("home.html", error="Cannot join private room.", code=code, name=session.get("name"), userchats=getUserChats(uidToConversation[session.get("name")]))
             else:
                 uidToConversation[session.get("name")].append({"name": code,"adminPerms":False})
                 return redirect(url_for("room",id=code))
@@ -109,7 +111,7 @@ def room():
     if room is None or session.get("name") is None or room not in rooms:
         return redirect(url_for("home"))
 
-    return render_template("room.html", code=room, messages=rooms[room]["messages"], members=getChatMembers(room),isAdmin = isRoomAdmin(session.get("name"),room))
+    return render_template("room.html", code=room, messages=rooms[room]["messages"], members=getChatMembers(room),isAdmin = isRoomAdmin(session.get("name"),room),uid=session.get("name"),type=rooms[room]["type"])
 
 @socketio.on("message")
 def message(data):
@@ -137,11 +139,18 @@ def setType(type):
         print("error: invalid perms")
         return
     rooms[room]["type"] = type
+    content = {
+        "name": "System",
+        "message": f"{admin} has changed conversation type to {type}",
+        "changeType": "true",
+        "type": type
+    }
+    send(content, to=room)
 
 @socketio.on("addMember")
 def addMember(user):
     user = user['user']
-    print("adding member "+user)
+    print("adding member  "+user)
     room = session.get("room")
     admin = session.get("name")
     if room not in rooms:
@@ -154,10 +163,14 @@ def addMember(user):
         print("error invalid username")
         return
         #todo: return error invalid username to client 
+    print(uidToConversation[user])
     uidToConversation[user].append({"name": room, "adminPerms": False})
+    print(uidToConversation[user])
     content = {
         "name": "System",
-        "message": f"{admin} has added {user} from the room"
+        "message": f"{admin} has added {user} to the room",
+        "addUser": "true",
+        "user": user
     }
     send(content, to=room)
     rooms[room]["messages"].append(content)
@@ -165,6 +178,8 @@ def addMember(user):
 @socketio.on("removeMember")
 def removeMember(user):
     user = user['user']
+    print("removing user "+user)
+    print(uidToConversation[user])
     room = session.get("room")
     admin = session.get("name")
     if room not in rooms:
@@ -176,12 +191,18 @@ def removeMember(user):
         print("error invalid username")
         return
         #todo: return error invalid username to client 
-    for i in range(len(uidToConversation)):
+    for i in range(len(uidToConversation[user])):
+        print(uidToConversation[user][i]['name'])
+        print(room)
         if uidToConversation[user][i]['name'] == room:
+            print("found room!!")
             del uidToConversation[user][i]
+            print("deleting user "+user)
             content = {
             "name": "System",
-            "message": f"{admin} has removed {user} from the room"
+            "message": f"{admin} has removed {user} from the room",
+            "removeUser": "true",
+            "user": user
             }
             send(content, to=room)
             rooms[room]["messages"].append(content)
@@ -213,7 +234,7 @@ def disconnect():
     if room in rooms:
         rooms[room]["members"] -= 1
         #if rooms[room]["members"] <= 0:
-        #    del rooms[room]
+        #    del rooms[room] s
     
     send({"name": name, "message": "has left the room"}, to=room)
     print(f"{name} has left the room {room}")
