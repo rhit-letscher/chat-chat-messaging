@@ -5,7 +5,7 @@ from string import ascii_uppercase
 from datetime import datetime
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "hjhjsdahhds"
+app.config["SECRET_KEY"] = "hjhjdahhds"
 socketio = SocketIO(app)
 
 users = {"user1": "password","admin":"adminadmin"}

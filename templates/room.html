@@ -65,11 +65,36 @@
   const messages = document.getElementById("messages");
   const members = document.getElementById("participantsList");
 
+
+  const parseReply = (message, user) => {
+    words = message.split(" ")
+    parsed = ""
+    signedInUserMention = false;
+    for(var i = 0; i<words.length; i+=1){
+      if(words[i][0]=='@'){
+        if(words[i].length == user.length+1 && words[i].substring(1) == user){
+          signedInUserMention = true;
+        }
+        parsed+=`<p class="mention">${words[i]}</p>`
+      }
+      else{
+        parsed+=words[i];
+      }
+      if(i!=words.length-1){
+        parsed += " ";
+      }
+    }
+    if(signedInUserMention){
+      parsed = `<p class="current-user-mention">`+parsed+'</p>';
+    }
+    return parsed;
+  }
+
   const createMessage = (name, msg, date) => {
     const content = `
     <div class="text">
         <span>
-            <strong>${name}</strong>: ${msg}
+            <strong>${name}</strong>: ${parseReply(msg,name)}
         </span>
         <span class="muted">
             ${date}
@@ -110,6 +135,7 @@
   const setType = (type) => {
     socketio.emit("setType", type);
   };
+
 
 
   socketio.on("message", (data) => {

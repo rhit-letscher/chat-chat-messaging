@@ -1,3 +1,9 @@
+:root{
+  --current-user-mention-color: pink;
+  --mention-color: red;
+  --current-user-mention-highlight: yellow;
+}
+
 .content {
     display: flex;
     align-items: center;
@@ -20,6 +26,18 @@
   
   .create-btn {
     width: 100%;
+  }
+
+  .current-user-mention {
+    display: inline;
+    color: current-user-mention-color;
+    font-weight: bold;
+  }
+
+  .mention {
+    display: inline;
+    color: mention-color;
+    font-weight: bold;
   }
   
   .message-box {
