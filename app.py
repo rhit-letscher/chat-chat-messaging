@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, session, redirect, url_for
 from flask_socketio import join_room, leave_room, send, SocketIO
 import random
 from string import ascii_uppercase
+from datetime import datetime
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "hjhjsdahhds"
@@ -161,11 +162,13 @@ def message(data):
     
     content = {
         "name": session.get("name"),
-        "message": data["data"]
+        "message": data["data"],
+        "date": datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     }
     send(content, to=room)
     rooms[room]["messages"].append(content)
     print(f"{session.get('name')} said: {data['data']}")
+    print(f"at {content['date']}")
 
 @socketio.on("setType")
 def setType(type):
@@ -183,7 +186,8 @@ def setType(type):
         "name": "System",
         "message": f"{admin} has changed conversation type to {type}",
         "changeType": "true",
-        "type": type
+        "type": type,
+        "date": datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     }
     send(content, to=room)
 
@@ -210,7 +214,8 @@ def addMember(user):
         "name": "System",
         "message": f"{admin} has added {user} to the room",
         "addUser": "true",
-        "user": user
+        "user": user,
+        "date": datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     }
     send(content, to=room)
     rooms[room]["messages"].append(content)
@@ -242,7 +247,8 @@ def removeMember(user):
             "name": "System",
             "message": f"{admin} has removed {user} from the room",
             "removeUser": "true",
-            "user": user
+            "user": user,
+            "date": datetime.now().strftime("%d/%m/%Y %H:%M:%S")
             }
             send(content, to=room)
             rooms[room]["messages"].append(content)
