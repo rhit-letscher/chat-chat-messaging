@@ -7,6 +7,7 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = "hjhjsdahhds"
 socketio = SocketIO(app)
 
+users = {"user1": "password"}
 uidToConversation = {"user1": [{"name": "chat1","adminPerms":True},{"name": "chat3","adminPerms":False}]}
 rooms = {"chat1": {"members": 1, "messages": [],"type": "public"},"chat2": {"members": 1, "messages": [], "type": "public"}}
 uid = "user1"
@@ -101,7 +102,46 @@ def home():
         #session["name"] = name
         
 
-    return render_template("home.html", userchats=getUserChats(uidToConversation[session.get("name")]))
+    return render_template("home.html", name=session.get("name"),userchats=getUserChats(uidToConversation[session.get("name")]))
+
+
+@app.route("/register",methods=["POST", "GET"])
+def register():
+    if request.method == "POST":
+        allowedChars = set(c for c in '0123456789a...zA...Z~!@#$%^&*()_+')
+        username = request.form.get("username")
+        password = request.form.get("password")
+        if password is None or username is None:
+            return
+        if username in users.keys():
+            return render_template("register.html",error="Error: User already exists. Please choose a new username.");
+        if len(password)<8:
+            return render_template("register.html",error="Error: Password must be at least 8 characters long.");
+        #if any(userChar not in allowedChars for userChar in username):
+        #    return render_template("register.html",error="Error: Username must only contain alphanumeric characters or the symbols ~!@#$%^&*()_+");
+        #if any(passChar not in allowedChars for passChar in password):
+        #    return render_template("register.html",error="Error: Password must only contain alphanumeric characters or the symbols ~!@#$%^&*()_+");
+        users[username] = password
+        print(f"registering {username}")
+        return redirect(url_for("login"))
+    return render_template("register.html")
+
+@app.route("/login",methods=["POST", "GET"])
+def login():
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+        print(f"attempting login {username}")
+        print(list(users.keys()))
+        if username not in list(users.keys()):
+            return render_template("login.html", error="User does not exist.")
+        if users[username] != password:
+            return render_template("login.html", error="Incorrect password.")
+        session['name'] = username
+        return redirect(url_for("home"))
+    return render_template("login.html")
+
+    
 
 @app.route("/room")
 def room():
