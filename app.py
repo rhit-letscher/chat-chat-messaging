@@ -8,9 +8,9 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = "hjhjsdahhds"
 socketio = SocketIO(app)
 
-users = {"user1": "password"}
-uidToConversation = {"user1": [{"name": "chat1","adminPerms":True},{"name": "chat3","adminPerms":False}]}
-rooms = {"chat1": {"members": 1, "messages": [],"type": "public"},"chat2": {"members": 1, "messages": [], "type": "public"}}
+users = {"user1": "password","admin":"adminadmin"}
+uidToConversation = {"user1": [{"name": "chat1","adminPerms":True},{"name": "chat3","adminPerms":False}],"admin": [{"name": "chat3","adminPerms":True}]}
+rooms = {"chat1": {"members": 1, "messages": [],"type": "public"},"chat3": {"members": 1, "messages": [], "type": "public"}}
 uid = "user1"
 
 def generate_unique_code(length):
@@ -48,17 +48,16 @@ def isRoomAdmin(user,roomName):
 @app.route("/", methods=["POST", "GET"])
 def home():
     name = session.get("name")
+    print(session.get("name"))
     #default name
     if not name:
-        name = uid
-        session["name"] = uid
+        return redirect(url_for("login"))
 
     #for debugging purposes, initializes chatlist if empty
     if(name not in uidToConversation.keys()):
-        uidToConversation[name] = []
+        return redirect(url_for("login"))
     else:
         userchats = uidToConversation[name]
-
 
 
     if request.method == "POST":
@@ -67,9 +66,17 @@ def home():
         join = request.form.get("join", False)
         create = request.form.get("create", False)
         changename = request.form.get("setname", False)
+        logout = request.form.get("logout", False)
         
         #if not session["name"]:
         #   return render_template("home.html", error="Please enter a name.", code=code, name=name, userchats=userchats)
+
+        #logout
+        if logout != False:
+            print("clicked logout")
+            session.clear()
+            session["message"] = "Logout successful."
+            return redirect(url_for("login"))
 
         #join room
         if join != False:
@@ -122,7 +129,9 @@ def register():
         #    return render_template("register.html",error="Error: Username must only contain alphanumeric characters or the symbols ~!@#$%^&*()_+");
         #if any(passChar not in allowedChars for passChar in password):
         #    return render_template("register.html",error="Error: Password must only contain alphanumeric characters or the symbols ~!@#$%^&*()_+");
+        #init tables. todo: replace with dbms
         users[username] = password
+        uidToConversation[username] = []
         print(f"registering {username}")
         return redirect(url_for("login"))
     return render_template("register.html")
@@ -139,6 +148,7 @@ def login():
         if users[username] != password:
             return render_template("login.html", error="Incorrect password.")
         session['name'] = username
+        print("login successful, redirecting")
         return redirect(url_for("home"))
     return render_template("login.html")
 
@@ -267,7 +277,7 @@ def connect(auth):
         return render_template("home.html", error="This room is private.", code=room, name=session.get("name"), userchats=getUserChats(uidToConversation[session.get("name")]))
     
     join_room(room)
-    send({"name": name, "message": "has entered the room"}, to=room)
+    send({"name": name, "message": "has entered the room","date": datetime.now().strftime("%d/%m/%Y %H:%M:%S")}, to=room)
     rooms[room]["members"] += 1
     print(f"{name} joined room {room}")
 
@@ -282,7 +292,7 @@ def disconnect():
         #if rooms[room]["members"] <= 0:
         #    del rooms[room] s
     
-    send({"name": name, "message": "has left the room"}, to=room)
+    send({"name": name, "message": "has left the room","date": datetime.now().strftime("%d/%m/%Y %H:%M:%S")}, to=room)
     print(f"{name} has left the room {room}")
 
 if __name__ == "__main__":
