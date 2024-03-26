@@ -90,14 +90,19 @@
     return parsed;
   }
 
+  let messageNumber = 0;
+
   const createMessage = (name, msg, date) => {
+    messageNumber++;
     const content = `
-    <div class="text">
-        <span>
+    <div class="text" id="text-${messageNumber}">
+        <span id="message-content-${messageNumber}">
             <strong>${name}</strong>: ${parseReply(msg,name)}
         </span>
         <span class="muted">
             ${date}
+        </span>
+        <button id="report-${messageNumber}" onClick="sendReport(${messageNumber})">Report Message</button>
         </span>
     </div>
     `;
@@ -111,6 +116,12 @@
     </li>
     `;
     members.innerHTML += content;
+  };
+
+  const sendReport = (messageNumber) => {
+    const messageText = document.getElementById(`message-content-${messageNumber}`).innerText;
+    socketio.emit("sendReport", messageText);
+    console.log(messageText);
   };
 
   const removeListMember = (name) => {

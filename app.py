@@ -201,6 +201,10 @@ def setType(type):
     }
     send(content, to=room)
 
+@socketio.on("sendReport")
+def sendReport(message):
+    sender = session.get("name");
+
 @socketio.on("addMember")
 def addMember(user):
     user = user['user']
