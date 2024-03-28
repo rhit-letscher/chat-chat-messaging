@@ -241,6 +241,13 @@ def setType(type):
     rooms[room]["msgCount"] = rooms[room]["msgCount"]+1
     send(content, to=room)
 
+@socketio.on("dismissMessage")
+def dismissMessage(reportID):
+    print("got it")
+    print(reportID)
+    report = getReportByID(reportID)
+    report["status"] = "DISMISSED"
+
 @socketio.on("redactMessage")
 def redactMessage(reportID):
     print("got it")
