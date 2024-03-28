@@ -10,33 +10,13 @@ socketio = SocketIO(app)
 
 numReports = [0]
 globalAdmins = ["user1","admin"]
+userDeleted=[{"username":"sample","reason":"sample","datetime":"sample"}]
 reports = [{"reportID":0,"CID":"room","datetime":"sample","dateReported":"sample","messageContent":"sample","reportedUser":"sample","submittedBy":"sample","status":"PENDING"}]
 users = {"user1": "password","admin":"adminadmin"}
 uidToConversation = {"user1": [{"name": "chat1","adminPerms":True},{"name": "chat3","adminPerms":False}],"admin": [{"name": "chat3","adminPerms":True}]}
 rooms = {"chat1": {"members": 1, "messages": [],"type": "public","msgCount":0},"chat3": {"members": 1, "messages": [], "type": "public","msgCount":0}}
 uid = "user1"
 
-def getActiveReports():
-    activereports = []
-    for report in reports:
-        if(report["status"]=="PENDING"):
-            activereports.append(report)
-    print(activereports)
-    return activereports
-
-def getRedactedReports():
-    redacted = []
-    for report in reports:
-        if(report["status"]=="REDACTED"):
-            redacted.append(report)
-    return redacted
-
-def getDismissedReports():
-    dismissed = []
-    for report in reports:
-        if(report["status"]=="DISMISSED"):
-            dismissed.append(report)
-    return dismissed
 
 def getReportByID(id):
     for report in reports:
@@ -54,6 +34,16 @@ def generate_unique_code(length):
     
     return code
 
+def softDelete(user,reason = ""):
+    entry = {"username":user,"reason":reason,"datetime":datetime.now().strftime("%d/%m/%Y %H:%M:%S")}
+    userDeleted.append(entry)
+    allchats = getUserChats(uidToConversation[user])
+    for chat in allchats:
+        for message in rooms[chat]["messages"]:
+            if message["sender"] == user:
+                message["content"] = "Message sent by deleted user"
+                message["sender"] = "Deleted User"
+
 def getChatMembers(chatName):
     members = []
     for user in uidToConversation.keys():
@@ -61,6 +51,7 @@ def getChatMembers(chatName):
             if(chat["name"] == chatName):
                 members.append(user)
     return members
+
 
 def getUserChats(chatInfo):
     print(chatInfo)
@@ -93,7 +84,7 @@ def home():
 
     if request.method == "POST":
         name = request.form.get("name")
-        code = request.form.get("code")
+        code = request.form.get("code",None)
         join = request.form.get("join", False)
         create = request.form.get("create", False)
         changename = request.form.get("setname", False)
@@ -132,7 +123,12 @@ def home():
         #room = code
         if create != False:
             print("clicked create")
-            room = generate_unique_code(4)
+            if(code is None):
+                room = generate_unique_code(4)
+            else:
+                room = code
+            session["room"] = room
+            print("creating roo m "+code)
             rooms[room] = {"members": 0, "messages": [],"type": "public", "msgCount":0}
             uidToConversation[session.get("name")].append({"name": room,"adminPerms":True})
             return redirect(url_for("room",id=room))
@@ -193,6 +189,7 @@ def login():
 @app.route("/room")
 def room():
     #room = session.get("room")
+    print(rooms)
     room = request.args.get('id')
     session['room'] = room
     if room is None or session.get("name") is None or room not in rooms:
@@ -261,13 +258,14 @@ def redactMessage(reportID):
     for message in roomMsgs:
         if(message["name"] == sender and message["date"] == datetime):
             print("found message")
-            message["message"] = "<b>This message has been redacted by our moderation team due to violating our content policy.</b>"
+            message["message"] = "This message has been redacted by our moderation team due to violating our content policy."
     rooms[CID]["messages"] = roomMsgs
     print(reports)
 
 @socketio.on("sendReport")
 def sendReport(msg):
     print("report received")
+    print(msg)
     submittedBy = session.get("name")
     CID = session.get("room")
     message = msg["content"]

@@ -46,6 +46,7 @@
         Remove Chat Member
       </button>
 
+    
       <p id="conv-type">Conversation Type: {{type}}</p>
       <button type="button" name="changePublic" id="changePublic-btn" onClick="setType('public')">
         Make Public
@@ -53,6 +54,12 @@
       <button type="button" name="changePrivate" id="changePrivate-btn" onClick="setType('private')">
         Make Private
       </button>
+  
+
+      <button type="button" name="deleteChat" id="deleteChat-btn" onClick="deleteConversation()">
+        Delete Conversation
+      </button>
+  
 
 </div>
 {% endif %}
@@ -85,7 +92,7 @@
       }
     }
     if(signedInUserMention){
-      parsed = `<p class="current-user-mention">`+parsed+'</p>';
+      parsed = `<p class="current-user-mention" class="message">`+parsed+'</p>';
     }
     return parsed;
   }
@@ -107,6 +114,10 @@
     </div>
     `;
     messages.innerHTML += content;
+    if(msg == "This message was sent by a deleted user" || msg == "This message has been redacted by our moderation team due to it violating our content policy."){
+      const m = document.getElementById(`message-content-${messageNumber}`);
+      m.classList.add("special-msg");
+    }
   };
 
   const initMemberList = (name) => {
@@ -123,7 +134,7 @@
     const messageDate = document.getElementById(`message-datetime-${messageNumber}`).innerText;
     msg = {"date":messageDate,"content":messageText}
     socketio.emit("sendReport", msg);
-    console.log(messageText);
+    console.log("sent report!!");
   };
 
   const removeListMember = (name) => {
@@ -147,6 +158,10 @@
 
   const setType = (type) => {
     socketio.emit("setType", type);
+  };
+
+  const deleteConversation = () => {
+    socketio.emit("deleteConversation");
   };
 
 

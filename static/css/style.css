@@ -96,6 +96,15 @@
     align-items: center;
   }
 
+
+  .vertical{
+    flex-direction:column !important;
+  }
+
+  .special-msg{
+    font-style:italic;
+  }
+
   .text {
     display: flex;
     flex-direction: row;
