@@ -8,6 +8,8 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = "hjhjdahhds"
 socketio = SocketIO(app)
 
+numReports = [0]
+reports = [{"reportID":0,"CID":"room","datetime":"sample","messageContent":"sample","reportedUser":"sample","submittedBy":"sample","status":"PENDING"}]
 users = {"user1": "password","admin":"adminadmin"}
 uidToConversation = {"user1": [{"name": "chat1","adminPerms":True},{"name": "chat3","adminPerms":False}],"admin": [{"name": "chat3","adminPerms":True}]}
 rooms = {"chat1": {"members": 1, "messages": [],"type": "public"},"chat3": {"members": 1, "messages": [], "type": "public"}}
@@ -202,8 +204,36 @@ def setType(type):
     send(content, to=room)
 
 @socketio.on("sendReport")
-def sendReport(message):
-    sender = session.get("name");
+def sendReport(msg):
+    submittedBy = session.get("name")
+    CID = session.get("room")
+    message = msg["content"]
+    messageDate = msg["date"]
+    print(submittedBy)
+    print(message)
+    print(CID)
+    messageContent = ""
+    reportedUser = ""
+    split = False
+    for i in range(len(message)):
+        if(not split):
+            if (message[i] == ':'):
+               split = True
+            else:
+                reportedUser += message[i]
+        else:
+            messageContent+= message[i]
+    
+    numReports[0] = numReports[0] + 1
+    report = {"reportID":numReports[0],
+                    "CID":CID,
+                    "datetime":messageDate,
+                    "messageContent":messageContent,
+                    "reportedUser":reportedUser,
+                    "submittedBy":submittedBy,
+                    "status":"PENDING"}
+    reports.append(report)
+    print(reports)
 
 @socketio.on("addMember")
 def addMember(user):

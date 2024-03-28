@@ -99,7 +99,7 @@
         <span id="message-content-${messageNumber}">
             <strong>${name}</strong>: ${parseReply(msg,name)}
         </span>
-        <span class="muted">
+        <span class="muted" id="message-datetime-${messageNumber}">
             ${date}
         </span>
         <button id="report-${messageNumber}" onClick="sendReport(${messageNumber})">Report Message</button>
@@ -120,7 +120,9 @@
 
   const sendReport = (messageNumber) => {
     const messageText = document.getElementById(`message-content-${messageNumber}`).innerText;
-    socketio.emit("sendReport", messageText);
+    const messageDate = document.getElementById(`message-datetime-${messageNumber}`).innerText;
+    msg = {"date":messageDate,"content":messageText}
+    socketio.emit("sendReport", msg);
     console.log(messageText);
   };
 
