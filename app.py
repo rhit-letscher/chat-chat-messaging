@@ -9,11 +9,20 @@ app.config["SECRET_KEY"] = "hjhjdahhds"
 socketio = SocketIO(app)
 
 numReports = [0]
-reports = [{"reportID":0,"CID":"room","datetime":"sample","messageContent":"sample","reportedUser":"sample","submittedBy":"sample","status":"PENDING"}]
+globalAdmins = ["user1","admin"]
+reports = [{"reportID":0,"CID":"room","datetime":"sample","dateReported":"sample","messageContent":"sample","reportedUser":"sample","submittedBy":"sample","status":"PENDING"}]
 users = {"user1": "password","admin":"adminadmin"}
 uidToConversation = {"user1": [{"name": "chat1","adminPerms":True},{"name": "chat3","adminPerms":False}],"admin": [{"name": "chat3","adminPerms":True}]}
 rooms = {"chat1": {"members": 1, "messages": [],"type": "public"},"chat3": {"members": 1, "messages": [], "type": "public"}}
 uid = "user1"
+
+def getActiveReports():
+    activereports = []
+    for report in reports:
+        if(report["status"]=="PENDING"):
+            activereports.append(report)
+    print(activereports)
+    return activereports
 
 def generate_unique_code(length):
     while True:
@@ -46,6 +55,7 @@ def isRoomAdmin(user,roomName):
     for room in uidToConversation[user]:
         if(room["name"] == roomName):
             return room["adminPerms"]
+
 
 @app.route("/", methods=["POST", "GET"])
 def home():
@@ -114,6 +124,11 @@ def home():
 
     return render_template("home.html", name=session.get("name"),userchats=getUserChats(uidToConversation[session.get("name")]))
 
+@app.route("/admin")
+def adminpanel():
+    if session.get("name") not in globalAdmins:
+        return redirect(url_for("/"))
+    return render_template("admin.html",activeReports=getActiveReports())
 
 @app.route("/register",methods=["POST", "GET"])
 def register():
@@ -228,6 +243,7 @@ def sendReport(msg):
     report = {"reportID":numReports[0],
                     "CID":CID,
                     "datetime":messageDate,
+                    "dateReported": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
                     "messageContent":messageContent,
                     "reportedUser":reportedUser,
                     "submittedBy":submittedBy,

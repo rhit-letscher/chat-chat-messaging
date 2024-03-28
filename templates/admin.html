@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block content %}
+<div>
+<h2 id="title-msg">Moderation Panel</h2>
+</div>
+<p><br></p>
+<div>
+<h3 id="title-msg">Active Reports</h3>
+<p><br></p>
+<table id="activereports">
+    <tr id="header">
+        <th>ID</th>
+        <th>Room</th>
+        <th>Send Date</th>
+        <th>Date Reported</th>
+        <th>Message Content</th>
+        <th>User Reported</th>
+        <th>Submitted By</th>
+        <th>Actions...</th>
+      </tr>
+</table>
+</div>
+
+<script type="text/javascript"> 
+    const activeTable = document.getElementById("activereports");
+    const createReport = (id,room,sendDate,dateReported,messageContent,reportedUser,submittedBy) => {
+        const content = `    <tr id="report-${id}">
+        <th>${id}</th>
+        <th><a href="/room?id=${room}">${room}</a></th>
+        <th>${sendDate}</th>
+        <th>${dateReported}</th>
+        <th>${messageContent}</th>
+        <th>${reportedUser}</th>
+        <th>${submittedBy}</th>
+        <th><button id="resolve-${id}" onClick="resolve("${id}")">Resolve</button></th>
+      </tr>`;
+        activeTable.innerHTML += content;
+    }
+    
+  </script>
+
+
+{% for report in activeReports %}
+<script type="text/javascript">
+  console.log("report {{report}}");
+  createReport("{{report.reportID}}","{{report.CID}}","{{report.datetime}}","{{report.dateReported}}","{{report.messageContent}}","{{report.reportedUser}}","{{report.submittedBy}}");
+</script>
+{% endfor %}
+
+<script type="text/javascript">
+    const resolve = (id) => {
+        console.log(id)
+    }
+  </script>
+{% endblock %}
