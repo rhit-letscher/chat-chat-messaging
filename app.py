@@ -5,7 +5,7 @@ from string import ascii_uppercase
 from datetime import datetime
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "hjhjdahhds"
+app.config["SECRET_KEY"] = "hjhjahds"
 socketio = SocketIO(app)
 
 numReports = [0]
@@ -13,7 +13,7 @@ globalAdmins = ["user1","admin"]
 reports = [{"reportID":0,"CID":"room","datetime":"sample","dateReported":"sample","messageContent":"sample","reportedUser":"sample","submittedBy":"sample","status":"PENDING"}]
 users = {"user1": "password","admin":"adminadmin"}
 uidToConversation = {"user1": [{"name": "chat1","adminPerms":True},{"name": "chat3","adminPerms":False}],"admin": [{"name": "chat3","adminPerms":True}]}
-rooms = {"chat1": {"members": 1, "messages": [],"type": "public"},"chat3": {"members": 1, "messages": [], "type": "public"}}
+rooms = {"chat1": {"members": 1, "messages": [],"type": "public","msgCount":0},"chat3": {"members": 1, "messages": [], "type": "public","msgCount":0}}
 uid = "user1"
 
 def getActiveReports():
@@ -23,6 +23,25 @@ def getActiveReports():
             activereports.append(report)
     print(activereports)
     return activereports
+
+def getRedactedReports():
+    redacted = []
+    for report in reports:
+        if(report["status"]=="REDACTED"):
+            redacted.append(report)
+    return redacted
+
+def getDismissedReports():
+    dismissed = []
+    for report in reports:
+        if(report["status"]=="DISMISSED"):
+            dismissed.append(report)
+    return dismissed
+
+def getReportByID(id):
+    for report in reports:
+        if(report["reportID"]==id):
+            return report
 
 def generate_unique_code(length):
     while True:
@@ -114,7 +133,7 @@ def home():
         if create != False:
             print("clicked create")
             room = generate_unique_code(4)
-            rooms[room] = {"members": 0, "messages": [],"type": "public"}
+            rooms[room] = {"members": 0, "messages": [],"type": "public", "msgCount":0}
             uidToConversation[session.get("name")].append({"name": room,"adminPerms":True})
             return redirect(url_for("room",id=room))
         
@@ -128,7 +147,7 @@ def home():
 def adminpanel():
     if session.get("name") not in globalAdmins:
         return redirect(url_for("/"))
-    return render_template("admin.html",activeReports=getActiveReports())
+    return render_template("admin.html",reports=reports)
 
 @app.route("/register",methods=["POST", "GET"])
 def register():
@@ -190,10 +209,12 @@ def message(data):
     content = {
         "name": session.get("name"),
         "message": data["data"],
-        "date": datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        "date": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+        "id":rooms[room]["msgCount"]+1
     }
     send(content, to=room)
     rooms[room]["messages"].append(content)
+    rooms[room]["msgCount"] = rooms[room]["msgCount"] + 1
     print(f"{session.get('name')} said: {data['data']}")
     print(f"at {content['date']}")
 
@@ -214,12 +235,32 @@ def setType(type):
         "message": f"{admin} has changed conversation type to {type}",
         "changeType": "true",
         "type": type,
-        "date": datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        "date": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+        "id":rooms[room]["msgCount"]+1
     }
+    rooms[room]["msgCount"] = rooms[room]["msgCount"]+1
     send(content, to=room)
+
+@socketio.on("redactMessage")
+def redactMessage(reportID):
+    print("got it")
+    print(reportID)
+    report = getReportByID(reportID)
+    report["status"] = "REDACTED"
+    CID = report["CID"]
+    sender = report["reportedUser"]
+    datetime = report["datetime"]
+    roomMsgs=rooms[CID]["messages"]
+    for message in roomMsgs:
+        if(message["name"] == sender and message["date"] == datetime):
+            print("found message")
+            message["message"] = "<b>This message has been redacted by our moderation team due to violating our content policy.</b>"
+    rooms[CID]["messages"] = roomMsgs
+    print(reports)
 
 @socketio.on("sendReport")
 def sendReport(msg):
+    print("report received")
     submittedBy = session.get("name")
     CID = session.get("room")
     message = msg["content"]
@@ -275,9 +316,11 @@ def addMember(user):
         "message": f"{admin} has added {user} to the room",
         "addUser": "true",
         "user": user,
-        "date": datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        "date": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+        "id":rooms[room]["msgCount"]+1
     }
     send(content, to=room)
+    rooms[room]["msgCount"] = rooms[room]["msgCount"]+1
     rooms[room]["messages"].append(content)
 
 @socketio.on("removeMember")
@@ -308,10 +351,12 @@ def removeMember(user):
             "message": f"{admin} has removed {user} from the room",
             "removeUser": "true",
             "user": user,
-            "date": datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            "date": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+            "id": rooms[room]["msgCount"]+ 1
             }
             send(content, to=room)
             rooms[room]["messages"].append(content)
+            rooms[room]["msgCount"] = rooms[room]["msgCount"] + 1
             break
 
 @socketio.on("connect")
