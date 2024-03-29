@@ -8,6 +8,7 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = "hjhjahds"
 socketio = SocketIO(app)
 
+deletedRooms = []
 numReports = [0]
 globalAdmins = ["user1","admin"]
 userDeleted=[{"username":"sample","reason":"sample","datetime":"sample"}]
@@ -17,6 +18,11 @@ uidToConversation = {"user1": [{"name": "chat1","adminPerms":True},{"name": "cha
 rooms = {"chat1": {"members": 1, "messages": [],"type": "public","msgCount":0},"chat3": {"members": 1, "messages": [], "type": "public","msgCount":0}}
 uid = "user1"
 
+def getDeletedUsers():
+    deleted = []
+    for user in userDeleted:
+        deleted.append(user["username"])
+    return deleted
 
 def getReportByID(id):
     for report in reports:
@@ -35,14 +41,28 @@ def generate_unique_code(length):
     return code
 
 def softDelete(user,reason = ""):
+    if user not in users.keys():
+        print(f"user {user} does not exist")
+        return -1
     entry = {"username":user,"reason":reason,"datetime":datetime.now().strftime("%d/%m/%Y %H:%M:%S")}
     userDeleted.append(entry)
     allchats = getUserChats(uidToConversation[user])
+    print("allchats is: \n")
+    print(allchats)
+    #clean messages
     for chat in allchats:
         for message in rooms[chat]["messages"]:
-            if message["sender"] == user:
-                message["content"] = "Message sent by deleted user"
-                message["sender"] = "Deleted User"
+            print("message is:\n")
+            print(message)
+            if message["name"] == user:
+                message["message"] = "Message sent by deleted user"
+                message["name"] = "Deleted User"
+    #clean uidToConversation
+    if(user in uidToConversation.keys()):
+        del uidToConversation[user]
+    #clean user
+    del users[user]
+    return 0
 
 def getChatMembers(chatName):
     members = []
@@ -60,6 +80,8 @@ def getUserChats(chatInfo):
         namelist.append(conversation["name"])
     print(namelist)
     return namelist
+
+
 
 def isRoomAdmin(user,roomName):
     for room in uidToConversation[user]:
@@ -110,7 +132,6 @@ def home():
             elif (rooms[code]["type"] == "private" and session.get("name") not in getChatMembers(code)):
                 return render_template("home.html", error="Cannot join private room.", code=code, name=session.get("name"), userchats=getUserChats(uidToConversation[session.get("name")]))
             else:
-                uidToConversation[session.get("name")].append({"name": code,"adminPerms":False})
                 return redirect(url_for("room",id=code))
 
         #change name
@@ -123,7 +144,7 @@ def home():
         #room = code
         if create != False:
             print("clicked create")
-            if(code is None):
+            if(code is None or code == ""):
                 room = generate_unique_code(4)
             else:
                 room = code
@@ -143,7 +164,7 @@ def home():
 def adminpanel():
     if session.get("name") not in globalAdmins:
         return redirect(url_for("/"))
-    return render_template("admin.html",reports=reports)
+    return render_template("admin.html",reports=reports,deletedusers=userDeleted)
 
 @app.route("/register",methods=["POST", "GET"])
 def register():
@@ -153,6 +174,8 @@ def register():
         password = request.form.get("password")
         if password is None or username is None:
             return
+        for user in getDeletedUsers():
+            return render_template("register.html",error="Error: Username used by a deleted user. Please choose a new username.");
         if username in users.keys():
             return render_template("register.html",error="Error: User already exists. Please choose a new username.");
         if len(password)<8:
@@ -188,17 +211,23 @@ def login():
 
 @app.route("/room")
 def room():
-    #room = session.get("room")
+    validate()
     print(rooms)
     room = request.args.get('id')
-    session['room'] = room
+    #some basic validation
     if room is None or session.get("name") is None or room not in rooms:
         return redirect(url_for("home"))
-
+    #validate privacy and add user if they're new
+    if room not in getUserChats(uidToConversation[session.get("name")]):
+        if rooms[room]["type"] == "private":
+            return redirect(url_for("home"))
+        uidToConversation[session.get("name")].append({"name": room,"adminPerms":False})
+    session['room'] = room
     return render_template("room.html", code=room, messages=rooms[room]["messages"], members=getChatMembers(room),isAdmin = isRoomAdmin(session.get("name"),room),uid=session.get("name"),type=rooms[room]["type"])
 
 @socketio.on("message")
 def message(data):
+    validate()
     room = session.get("room")
     if room not in rooms:
         return 
@@ -244,6 +273,47 @@ def dismissMessage(reportID):
     print(reportID)
     report = getReportByID(reportID)
     report["status"] = "DISMISSED"
+
+@socketio.on("deleteConversation")
+def deleteConversation():
+    room = session.get("room")
+    user = session.get("name")
+    if not isRoomAdmin(user,room):
+        return
+    content = {
+        "delete":True
+    }
+    send(content,to=room)
+    members = getChatMembers(room)
+    #clean uidToConversation
+    for member in members:
+        for chat in uidToConversation[member]:
+            if chat["name"] == room:
+                uidToConversation[member].remove(chat)
+    #clean conversation
+    del rooms[room]
+    deletedRooms.add(room)
+
+@socketio.on("validate")
+def validate():
+    if session.get("name") not in users.keys():
+        session.clear()
+        return redirect(url_for("login"))
+
+#shitty naming mb but this is called by the user on their own account
+@socketio.on("userSoftDelete")
+def userSoftDelete():
+    user = session.get("name")
+    print("soft deleting "+ user)
+    softDelete(user,"User delete")
+    session.clear()
+    return redirect(url_for("register"))
+
+#this one is called by a moderator from the mod panel on some user
+@socketio.on("softDeleteUser")
+def softDeleteUser(user,reason):
+    print("soft deleting "+ user)
+    softDelete(user,reason)
 
 @socketio.on("redactMessage")
 def redactMessage(reportID):

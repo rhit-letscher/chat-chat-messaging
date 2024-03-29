@@ -161,12 +161,16 @@
   };
 
   const deleteConversation = () => {
-    socketio.emit("deleteConversation");
+    if (confirm("Are you sure you want to delete this conversation, including the entire message history? This action cannot be undone.")) {
+    txt = socketio.emit("deleteConversation");
+  } 
   };
 
-
-
   socketio.on("message", (data) => {
+    socketio.emit("validate");
+    if(data.delete !=null){
+    window.location.replace("/");
+    }
     if(data.message !=null){
     createMessage(data.name, data.message, data.date);
     }

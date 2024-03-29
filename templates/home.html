@@ -19,12 +19,25 @@
     <ul id="chatslist">
     </ul>
     </div>
+    <div>
+
+    <div id="delete-account">
+    <button id="delete-account-button" onclick="deleteAccount()">Permanently Delete Account</button>
+    </div>
+
 </form>
 <script type="text/javascript"> 
     const chats = document.getElementById("chatslist");
+    var socketio = io();
     const createChatItem = (code) => {
         const content = `<li><a href="/room?id=${code}">Public Channel ${code}</a></li>`;
         chats.innerHTML += content;
+    }
+
+    const deleteAccount = () => {
+        if (confirm("Are you sure you want to delete your account? Your entire message history will be erased. This action cannot be undone.")) {
+        socketio.emit("userSoftDelete");
+  }
     }
     
   </script>

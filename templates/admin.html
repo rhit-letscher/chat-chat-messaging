@@ -47,20 +47,41 @@
     rows="3"
     placeholder="Message"
     name="User to Remove"
-    id="message"
+    id="remove-user-input"
   />
   <p>CAUTION: This will delete a user's entire message history. Do you wish to proceed?</p>
-  <button type="button" name="send" id="remove-user-btn" onClick="remove()">
+  <button type="button" name="send" id="remove-user-btn" onClick="deleteUser()">
     Remove User
   </button>
 </div>
+<h2>Deleted Users</h2>
+<table id="deletedusers">
+  <tr id="header">
+      <th>Username</th>
+      <th>Date</th>
+      <th>Reason</th>
+    </tr>
+</table>
+
 </div>
 
 <script type="text/javascript"> 
     const activeTable = document.getElementById("activereports");
     const dismissedTable = document.getElementById("dismissedreports");
     const redactedTable = document.getElementById("redactedreports");
+    const deletedUsersTable = document.getElementById("deletedusers");
     
+    const createDeletedUser = (username, reason, datetime) => {
+      let content = ` 
+      <tr>
+      <td>${username}</td>
+      <td>${datetime}</td>
+      <td>${reason}</td>
+      </tr>
+      `
+      deletedUsersTable.innerHTML += content;
+    }
+
     const createReport = (id,room,sendDate,dateReported,messageContent,reportedUser,submittedBy,status) => {
         let content = `    <tr id="active-${id}">
         <td>${id}</td>
@@ -100,6 +121,12 @@
 </script>
 {% endfor %}
 
+{% for user in deletedusers %}
+<script type="text/javascript">
+  console.log("user {{user}}");
+  createDeletedUser("{{user.username}}","{{user.reason}}","{{user.datetime}}");
+</script>
+{% endfor %}
 
 <script type="text/javascript">
     var socketio = io();
@@ -112,6 +139,12 @@
     const dismiss = (id) => {
         console.log("clicked dismiss")
         socketio.emit("dismissMessage", id);
+    }
+
+    const deleteUser = () => {
+        const deleteUid = document.getElementById("remove-user-input").value
+        console.log("deleting uid")
+        socketio.emit("softDeleteUser", deleteUid, "By admin")
     }
   </script>
 {% endblock %}
