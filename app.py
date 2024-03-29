@@ -174,7 +174,7 @@ def register():
         password = request.form.get("password")
         if password is None or username is None:
             return
-        for user in getDeletedUsers():
+        if username in getDeletedUsers():
             return render_template("register.html",error="Error: Username used by a deleted user. Please choose a new username.");
         if username in users.keys():
             return render_template("register.html",error="Error: User already exists. Please choose a new username.");
