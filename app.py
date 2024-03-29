@@ -3,10 +3,12 @@ from flask_socketio import join_room, leave_room, send, SocketIO
 import random
 from string import ascii_uppercase
 from datetime import datetime
+import os
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "hjhjahds"
 socketio = SocketIO(app)
+port = int(os.environ.get("PORT", 5000))
 
 deletedRooms = []
 numReports = [0]
